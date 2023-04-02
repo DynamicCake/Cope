@@ -1,0 +1,32 @@
+{
+    "config_version": "1.0",
+
+    "default_list": "default",
+    "default_start": "l_ratio",
+    "separator": " + ",
+
+    "start_list": {
+        "none": [],
+        "l_ratio": [
+            "L",
+            "ratio",
+            "bozo"
+        ],
+        "cope": [
+            "cope",
+            "seethe",
+            "mald"
+        ],
+        "dont_care": [
+            "don't care",
+            "didn't ask"
+        ]
+    },
+    "message_list": {
+        "default": [
+            "insert",
+            "fire",
+            "here"
+        ]
+    }
+}
