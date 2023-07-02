@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::{Read},
-    path::PathBuf, cmp,
+    path::PathBuf, cmp, env::{current_exe, current_dir},
 };
 
 use args::Args;
@@ -17,8 +17,11 @@ mod parse;
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    let path = args.config.unwrap_or(PathBuf::from("config.json"));
+    let current_exe = current_dir().expect("This project is a binary");
 
+    let path = args.config.unwrap_or(current_exe.join("config.json"));
+
+    std::env::args().next().unwrap();
     let Ok(mut config_file) = File::open(&path) else {
         println!("Cannot open config file {}", &path.to_string_lossy());
         return Ok(());
