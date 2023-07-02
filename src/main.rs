@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{Error, Read},
+    io::{Read},
     path::PathBuf, cmp,
 };
 
@@ -14,7 +14,7 @@ use crate::args::PROGRAM_VERSION;
 mod args;
 mod parse;
 
-fn main() -> Result<(), Error> {
+fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let path = args.config.unwrap_or(PathBuf::from("config.json"));
@@ -43,21 +43,20 @@ fn main() -> Result<(), Error> {
         println!("Warning: Config version: {} does not match program version: {}", config.version, PROGRAM_VERSION);
     }
 
-    let message_list = args.messages.unwrap_or(vec![config.default_list]);
+    let combo_name = args.combo.unwrap_or(config.default_combo);
+    let Some(message_list_list) = config.combos.get(&combo_name) else {
+        println!("Cannot find combo list {}\nFound lists: {:?}", combo_name, config.combos.keys());
+        return Ok(())
+    };
 
-
-    let mut options = Vec::new();
-
-    for messages in message_list {
-        let found_list = match config.message_list.get_mut(&messages) {
-            Some(it) => it,
-            None => {
-                println!("Warning: pack {} is not found", messages);
-                continue;
-            }
+    // Forgive me for my naming
+    let mut options: Vec<String> = Vec::new();
+    for message_list_name in message_list_list {
+        let Some(messages) = config.message_list.get_mut(message_list_name) else {
+            println!("Could not find message list with name {}", message_list_name);
+            return Ok(())
         };
-        
-        options.append(found_list);
+        options.append(messages);
     }
 
     let mut rng = rand::thread_rng();
@@ -65,9 +64,9 @@ fn main() -> Result<(), Error> {
 
     let start_name = args.start.unwrap_or(config.default_start);
     let mut out: Vec<String> = match config.start_list.get(&start_name) {
-        Some(it) => it.clone(), 
+        Some(it) => it.clone(), // idc lol
         None => {
-            println!("Error: cannot get default start");
+            println!("Error: cannot get start, available starts: {:?}", config.start_list.keys());
             return Ok(());
         }
     };
