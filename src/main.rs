@@ -1,22 +1,18 @@
 use std::{
-    cmp,
-    collections::HashMap,
     fs::File,
     io::{Error, Read},
-    iter::Map,
-    path::PathBuf,
+    path::PathBuf, cmp,
 };
 
 use args::Args;
-use clap::{builder::Str, Parser, parser};
+use clap::Parser;
 use parse::Config;
 use rand::seq::SliceRandom;
 
-use crate::{args::PROGRAM_VERSION, tree::TreeNode};
+use crate::args::PROGRAM_VERSION;
 
 mod args;
 mod parse;
-mod tree;
 
 fn main() -> Result<(), Error> {
     let args = Args::parse();
@@ -36,54 +32,32 @@ fn main() -> Result<(), Error> {
     }
 
     let mut config: Config = match serde_json::from_str(&contents) {
-        Ok(it) => it,
+        Ok(it) => it, 
         Err(err) => {
             println!("Could not parse bad JSON: {}", err);
             return Ok(());
-        }
+        } 
     };
 
     if config.version != PROGRAM_VERSION {
-        println!(
-            "Warning: Config version: {} does not match program version: {}",
-            config.version, PROGRAM_VERSION
-        );
+        println!("Warning: Config version: {} does not match program version: {}", config.version, PROGRAM_VERSION);
     }
 
-    let parent_messages = args.messages.unwrap_or(vec![config.default_list]);
+    let message_list = args.messages.unwrap_or(vec![config.default_list]);
 
-    // The nodes
-    let mut message_list: Vec<&TreeNode<Option<Vec<String>>>> = Vec::new();
 
-    // Find and get nodes
-    for messages in &parent_messages {
-        let Some(found_messages) = config.message_list.get(messages) else {
-            println!("Cannot find message: {}", messages);
-            return Ok(());
+    let mut options = Vec::new();
+
+    for messages in message_list {
+        let found_list = match config.message_list.get_mut(&messages) {
+            Some(it) => it,
+            None => {
+                println!("Warning: pack {} is not found", messages);
+                continue;
+            }
         };
         
-
-        message_list.push(found_messages);
-    }
-
-    // Flatten
-    let mut flattened = Vec::new();
-    for messages in &message_list {
-        let Ok(mut res) = messages.flatten() else {
-            println!("Cyclic reference detected");
-            return Ok(());
-        };
-        flattened.append(&mut res);        
-    }
-
-    // Collect
-    let mut options: Vec<String> = Vec::new();
-    for node in &flattened {
-        let Some(mut message) = node.data.clone() else {
-            continue;
-        };
-
-        options.append(&mut message);
+        options.append(found_list);
     }
 
     let mut rng = rand::thread_rng();
@@ -91,7 +65,7 @@ fn main() -> Result<(), Error> {
 
     let start_name = args.start.unwrap_or(config.default_start);
     let mut out: Vec<String> = match config.start_list.get(&start_name) {
-        Some(it) => it.clone(),
+        Some(it) => it.clone(), 
         None => {
             println!("Error: cannot get default start");
             return Ok(());
@@ -103,9 +77,9 @@ fn main() -> Result<(), Error> {
         // This should never be reached
         println!("Warning: There was a problem resizing the array size");
         String::new()
-    });
+    }); 
 
-    let out = out.join(&config.separator);
+    let out = out.join(&config.separator);    
 
     println!("{:?}", out);
 
