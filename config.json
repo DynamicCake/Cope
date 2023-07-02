@@ -1,7 +1,7 @@
 {
-    "config_version": "1.0",
+    "version": "1.1",
 
-    "default_list": "default",
+    "default_combo": "default",
     "default_start": "l_ratio",
     "separator": " + ",
 
@@ -22,11 +22,20 @@
             "didn't ask"
         ]
     },
+    "combos": {
+        "default": [
+            "default",
+            "ice"
+        ]
+    },
     "message_list": {
         "default": [
             "insert",
             "fire",
             "here"
+        ],
+        "ice": [
+            "hi"
         ]
     }
 }
