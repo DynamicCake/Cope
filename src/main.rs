@@ -1,4 +1,6 @@
-use std::{cmp, collections::HashMap, env::current_dir, fs::File, io::Read, path::PathBuf};
+use std::{
+    cmp, collections::HashMap, env::current_dir, fmt::Debug, fs::File, io::Read, path::PathBuf, process::{ExitCode, Termination}
+};
 
 use args::Args;
 use clap::Parser;
@@ -10,7 +12,7 @@ use crate::args::PROGRAM_VERSION;
 mod args;
 mod parse;
 
-fn main() -> Result<(), ProgramError> {
+fn main() -> anyhow::Result<(), ProgramError> {
     let args = Args::parse();
 
     let current_exe = current_dir().expect("This project is a binary");
@@ -75,7 +77,7 @@ fn main() -> Result<(), ProgramError> {
     Ok(())
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(thiserror::Error)]
 enum ProgramError {
     #[error("Cannot open config file {0}")]
     CannotOpenConfig(PathBuf),
@@ -91,4 +93,17 @@ enum ProgramError {
     CannotFindMessageList(String),
     #[error("Cannot find start {1} Starts: {:#?}", .0.keys())]
     CannotFindStart(HashMap<String, Vec<String>>, String),
+}
+
+// This is kind of cursed implementation, but debug will never realistically be used
+impl Debug for ProgramError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl Termination for ProgramError {
+    fn report(self) -> std::process::ExitCode {
+        ExitCode::FAILURE
+    }
 }
