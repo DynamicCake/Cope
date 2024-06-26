@@ -1,13 +1,11 @@
 use std::path::PathBuf;
 
-use clap::{Parser};
-    
+use clap::Parser;
 
-pub const PROGRAM_VERSION: &str = "1.1";
+pub const PROGRAM_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Parser, Debug)]
 #[command(author = "DynamicCake", version = PROGRAM_VERSION, about = "Big cope seethe mald", long_about = None)]
 pub struct Args {
-
     #[arg(long)]
     pub config: Option<PathBuf>,
 
@@ -18,6 +16,6 @@ pub struct Args {
     pub start: Option<String>,
 
     #[arg(short, long)]
-    pub length: usize
-
+    pub length: usize,
 }
+

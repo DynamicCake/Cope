@@ -1,8 +1,4 @@
-use std::{
-    fs::File,
-    io::{Read},
-    path::PathBuf, cmp, env::{current_exe, current_dir},
-};
+use std::{cmp, collections::HashMap, env::current_dir, fs::File, io::Read, path::PathBuf};
 
 use args::Args;
 use clap::Parser;
@@ -14,50 +10,40 @@ use crate::args::PROGRAM_VERSION;
 mod args;
 mod parse;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), ProgramError> {
     let args = Args::parse();
 
     let current_exe = current_dir().expect("This project is a binary");
 
     let path = args.config.unwrap_or(current_exe.join("config.json"));
-
-    std::env::args().next().unwrap();
     let Ok(mut config_file) = File::open(&path) else {
-        println!("Cannot open config file {}", &path.to_string_lossy());
-        return Ok(());
+        return Err(ProgramError::CannotOpenConfig(path));
     };
 
-    let mut contents = String::new();
-
-    if config_file.read_to_string(&mut contents).is_err() {
-        println!("Could not read file {}", &path.to_string_lossy());
-        return Ok(());
+    let mut config_content = String::new();
+    if let Err(_) = config_file.read_to_string(&mut config_content) {
+        return Err(ProgramError::CannotReadConfig(path));
     }
-
-    let mut config: Config = match serde_json::from_str(&contents) {
-        Ok(it) => it, 
-        Err(err) => {
-            println!("Could not parse bad JSON: {}", err);
-            return Ok(());
-        } 
-    };
+    let mut config: Config = serde_json::from_str(&config_content)
+        .map_err(|err| ProgramError::CannotParseConfig(err))?;
 
     if config.version != PROGRAM_VERSION {
-        println!("Warning: Config version: {} does not match program version: {}", config.version, PROGRAM_VERSION);
+        return Err(ProgramError::VersionMismatch(config.version));
     }
 
     let combo_name = args.combo.unwrap_or(config.default_combo);
-    let Some(message_list_list) = config.combos.get(&combo_name) else {
-        println!("Cannot find combo list {}\nFound lists: {:?}", combo_name, config.combos.keys());
-        return Ok(())
+    // message lists means it is a list of
+    let Some(message_list_names) = config.combos.get(&combo_name) else {
+        return Err(ProgramError::CannotFindComboList(config.combos, combo_name));
     };
 
     // Forgive me for my naming
     let mut options: Vec<String> = Vec::new();
-    for message_list_name in message_list_list {
+    for message_list_name in message_list_names {
         let Some(messages) = config.message_list.get_mut(message_list_name) else {
-            println!("Could not find message list with name {}", message_list_name);
-            return Ok(())
+            return Err(ProgramError::CannotFindMessageList(
+                message_list_name.clone(),
+            ));
         };
         options.append(messages);
     }
@@ -69,21 +55,40 @@ fn main() -> anyhow::Result<()> {
     let mut out: Vec<String> = match config.start_list.get(&start_name) {
         Some(it) => it.clone(), // idc lol
         None => {
-            println!("Error: cannot get start, available starts: {:?}", config.start_list.keys());
-            return Ok(());
+            return Err(ProgramError::CannotFindStart(
+                config.start_list,
+                start_name.clone(),
+            ));
         }
     };
     out.append(&mut options);
     let new_len = cmp::min(args.length, out.len());
     out.resize_with(new_len, || {
         // This should never be reached
-        println!("Warning: There was a problem resizing the array size");
-        String::new()
-    }); 
+        panic!("There was a problem resizing the array size");
+    });
 
-    let out = out.join(&config.separator);    
+    let out = out.join(&config.separator);
 
-    println!("{:?}", out);
+    println!("{}", out);
 
     Ok(())
+}
+
+#[derive(Debug, thiserror::Error)]
+enum ProgramError {
+    #[error("Cannot open config file {0}")]
+    CannotOpenConfig(PathBuf),
+    #[error("Cannot read config file {0}")]
+    CannotReadConfig(PathBuf),
+    #[error("Cannot parse config file {0}")]
+    CannotParseConfig(serde_json::error::Error),
+    #[error("Config version: {0} does not match program version: {PROGRAM_VERSION}")]
+    VersionMismatch(String),
+    #[error("Cannot find combo list {1} Lists: {:#?}", .0.keys())]
+    CannotFindComboList(HashMap<String, Vec<String>>, String),
+    #[error("Cannot find message list with name {0}")]
+    CannotFindMessageList(String),
+    #[error("Cannot find start {1} Starts: {:#?}", .0.keys())]
+    CannotFindStart(HashMap<String, Vec<String>>, String),
 }
